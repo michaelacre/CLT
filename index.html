@@ -69,7 +69,7 @@
       });
   }
 
-  function verificarLogin() {
+function verificarLogin() {
     fetch(`${API_URL}?acao=verificar`, { redirect: "follow" })
       .then(res => res.json())
       .then(res => {
@@ -77,14 +77,15 @@
         if (res.logado) {
           status.innerHTML = `Logado como: <b>${res.email}</b>`;
         } else {
-          status.innerHTML = `<a href="${API_URL}" target="_blank" class="text-white">Fazer Login</a>`;
+          // O segredo está no target="_blank" para abrir em nova aba
+          // e no parâmetro opcional para forçar a tela de login do Google
+          status.innerHTML = `<a href="${API_URL}?acao=login" target="_blank" class="btn btn-sm btn-outline-light">Fazer Login com Google</a>`;
         }
       })
       .catch(() => {
         document.getElementById('userStatus').innerHTML = "Modo Visualização";
       });
   }
-
   function carregarCategorias() {
     fetch(`${API_URL}?acao=categorias`).then(res => res.json()).then(console.log);
   }
