@@ -42,12 +42,12 @@
   };
 
   function carregarPrestadores() {
-    fetch(`${API_URL}?acao=dados`)
+    // Adicionamos um redirecionamento para evitar erros de bloqueio (CORS)
+    fetch(`${API_URL}?acao=dados`, { redirect: "follow" })
       .then(res => res.json())
       .then(lista => {
         const div = document.getElementById('listaPrestadores');
         div.innerHTML = '';
-        if (lista.erro) throw new Error(lista.erro);
         
         lista.forEach(p => {
           div.innerHTML += `
@@ -64,20 +64,24 @@
         });
       })
       .catch(err => {
-        document.getElementById('listaPrestadores').innerHTML = `<p class="text-center text-danger">Erro ao carregar: ${err.message}</p>`;
+        document.getElementById('listaPrestadores').innerHTML = 
+          `<p class="text-center text-danger">Erro ao carregar dados. Verifique a conexão.</p>`;
       });
   }
 
   function verificarLogin() {
-    fetch(`${API_URL}?acao=verificar`)
+    fetch(`${API_URL}?acao=verificar`, { redirect: "follow" })
       .then(res => res.json())
       .then(res => {
         const status = document.getElementById('userStatus');
         if (res.logado) {
-          status.innerHTML = `Logado: ${res.email}`;
+          status.innerHTML = `Logado como: <b>${res.email}</b>`;
         } else {
           status.innerHTML = `<a href="${API_URL}" target="_blank" class="text-white">Fazer Login</a>`;
         }
+      })
+      .catch(() => {
+        document.getElementById('userStatus').innerHTML = "Modo Visualização";
       });
   }
 
