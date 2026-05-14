@@ -26,14 +26,60 @@
 </div>
 
 <div class="container mt-4">
+  <div class="text-center mb-4" id="acoesPrestador" style="display: none;">
+    <button class="btn btn-outline-success mx-1" onclick="abrirModalCadastro()">Meu Cadastro</button>
+    <button class="btn btn-outline-secondary mx-1" onclick="abrirModalPortfolio()">Adicionar Portfólio</button>
+  </div>
   <div id="listaPrestadores" class="row">
     <p class="text-center">A carregar profissionais...</p>
   </div>
 </div>
 
+<!-- Modal Cadastro -->
+<div class="modal" id="modalCadastro" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cadastro Prestador</h5>
+        <button type="button" class="btn-close" onclick="fecharModal('modalCadastro')"></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="cadNome" class="form-control mb-2" placeholder="Nome Completo">
+        <input type="text" id="cadCategoria" class="form-control mb-2" placeholder="Sua Categoria (ex: Encanador)">
+        <input type="text" id="cadWhatsapp" class="form-control mb-2" placeholder="WhatsApp (somente números)">
+        <input type="text" id="cadCidade" class="form-control mb-2" placeholder="Cidade">
+        <label class="form-label mb-0 mt-2">Foto de Perfil</label>
+        <input type="file" id="cadFoto" class="form-control mb-2" accept="image/*">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="enviarCadastro()">Salvar Cadastro</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Portfolio -->
+<div class="modal" id="modalPortfolio" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Novo Portfólio</h5>
+        <button type="button" class="btn-close" onclick="fecharModal('modalPortfolio')"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label mb-0">Selecione uma imagem do seu trabalho</label>
+        <input type="file" id="portFoto" class="form-control mb-2" accept="image/*">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-success" onclick="enviarPortfolio()">Salvar Imagem</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   // COLOQUE AQUI O SEU NOVO URL GERADO NO PASSO ANTERIOR
-  const API_URL = "https://script.google.com/macros/s/AKfycbyXFAJ1949cbC2pyuMEQCFiOzIGCPUYMXO8X4W8lLNPVTn0MNjNdfzruJDyBkeTH9ED/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbzjl0DH_B8AXexxbt0WRSrm5j37p6D06EW5meBxRWgU-bCYVuhxcJ0ygyQM4Q47eLDvkg/exec";
 
   window.onload = function() {
     carregarCategorias();
@@ -69,22 +115,165 @@
       });
   }
 
-function verificarLogin() {
-    fetch(`${API_URL}?acao=verificar`, { redirect: "follow" })
-      .then(res => res.json())
-      .then(res => {
-        const status = document.getElementById('userStatus');
-        if (res.logado) {
-          status.innerHTML = `Logado como: <b>${res.email}</b>`;
-        } else {
-          // O segredo está no target="_blank" para abrir em nova aba
-          // e no parâmetro opcional para forçar a tela de login do Google
-          status.innerHTML = `<a href="${API_URL}?acao=login" target="_blank" class="btn btn-sm btn-outline-light">Fazer Login com Google</a>`;
-        }
-      })
-      .catch(() => {
-        document.getElementById('userStatus').innerHTML = "Modo Visualização";
-      });
+  function verificarLogin() {
+    const userJson = localStorage.getItem('trampoac_user');
+    const status = document.getElementById('userStatus');
+    const acoes = document.getElementById('acoesPrestador');
+    
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      status.innerHTML = `Logado como: <b>${user.email}</b> <button class="btn btn-sm btn-danger ms-2" onclick="fazerLogout()">Sair</button>`;
+      if (acoes) acoes.style.display = 'block';
+    } else {
+      status.innerHTML = `
+        <input type="email" id="emailLogin" placeholder="Seu e-mail" class="form-control-sm border-0 px-2 text-dark" style="border-radius:4px;">
+        <button class="btn btn-sm btn-light ms-1" onclick="fazerLogin()">Entrar</button>
+      `;
+      if (acoes) acoes.style.display = 'none';
+    }
+  }
+
+  function fazerLogout() {
+    localStorage.removeItem('trampoac_user');
+    verificarLogin();
+  }
+
+  function fazerLogin() {
+    const email = document.getElementById('emailLogin').value;
+    if (!email) return alert('Digite um e-mail');
+    
+    document.getElementById('userStatus').innerHTML = "Verificando...";
+    
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ acao: 'login', email: email })
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.logado) {
+        localStorage.setItem('trampoac_user', JSON.stringify(res));
+        verificarLogin();
+      } else {
+        alert(res.erro || 'Erro ao logar');
+        verificarLogin();
+      }
+    })
+    .catch(err => {
+      alert('Erro de conexão ao verificar e-mail.');
+      verificarLogin();
+    });
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+  }
+
+  async function enviarCadastro() {
+    const userJson = localStorage.getItem('trampoac_user');
+    if (!userJson) return alert('Faça login primeiro');
+    const email = JSON.parse(userJson).email;
+
+    const nome = document.getElementById('cadNome').value;
+    const categoria = document.getElementById('cadCategoria').value;
+    const whatsapp = document.getElementById('cadWhatsapp').value;
+    const cidade = document.getElementById('cadCidade').value;
+    const fileInput = document.getElementById('cadFoto');
+
+    if (!nome) return alert('Nome é obrigatório');
+
+    const btnSalvar = document.querySelector('#modalCadastro .btn-success');
+    btnSalvar.innerText = "Salvando...";
+    btnSalvar.disabled = true;
+
+    const fotoBase64 = fileInput.files.length > 0 ? await fileToBase64(fileInput.files[0]) : null;
+
+    const payload = {
+      acao: 'cadastro',
+      email: email,
+      nome: nome,
+      categoria: categoria,
+      whatsapp: whatsapp,
+      cidade: cidade,
+      fotoBase64: fotoBase64
+    };
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(res => {
+      alert(res.mensagem || 'Cadastro salvo com sucesso');
+      fecharModal('modalCadastro');
+      btnSalvar.innerText = "Salvar Cadastro";
+      btnSalvar.disabled = false;
+      carregarPrestadores(); // Atualiza a lista
+    })
+    .catch(err => {
+      alert('Erro ao salvar o cadastro.');
+      btnSalvar.innerText = "Salvar Cadastro";
+      btnSalvar.disabled = false;
+    });
+  }
+
+  async function enviarPortfolio() {
+    const userJson = localStorage.getItem('trampoac_user');
+    if (!userJson) return alert('Faça login primeiro');
+    const idPrestador = JSON.parse(userJson).id;
+
+    const fileInput = document.getElementById('portFoto');
+    if (fileInput.files.length === 0) return alert('Selecione uma imagem');
+
+    const btnSalvar = document.querySelector('#modalPortfolio .btn-success');
+    btnSalvar.innerText = "Enviando...";
+    btnSalvar.disabled = true;
+
+    const imagemBase64 = await fileToBase64(fileInput.files[0]);
+
+    const payload = {
+      acao: 'portfolio',
+      idPrestador: idPrestador,
+      imagemBase64: imagemBase64
+    };
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(res => {
+      alert(res.mensagem || 'Portfólio salvo com sucesso');
+      fecharModal('modalPortfolio');
+      btnSalvar.innerText = "Salvar Imagem";
+      btnSalvar.disabled = false;
+      fileInput.value = ""; // limpa o input
+    })
+    .catch(err => {
+      alert('Erro ao salvar portfólio.');
+      btnSalvar.innerText = "Salvar Imagem";
+      btnSalvar.disabled = false;
+    });
+  }
+
+  function abrirModalCadastro() {
+    document.getElementById('modalCadastro').style.display = 'block';
+  }
+
+  function abrirModalPortfolio() {
+    document.getElementById('modalPortfolio').style.display = 'block';
+  }
+
+  function fecharModal(id) {
+    document.getElementById(id).style.display = 'none';
   }
   function carregarCategorias() {
     fetch(`${API_URL}?acao=categorias`).then(res => res.json()).then(console.log);
